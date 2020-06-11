@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Autocast Receiver</title>
+    <style type="text/css">
+        html {
+            height: 100%;
+            padding: 0;
+            width: 100%;
+        }
+
+        body {
+            overflow: hidden;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            background: white;
+        }
+
+        #main {
+            height: 100%;
+            background: white;
+            opacity: 0;
+            transition: opacity 4s ease;
+        }
+
+        #main, iframe {
+            background: white;
+        }
+
+        #main.show {
+            opacity: 1;
+        }
+
+        #status {
+            transition: opacity 1s;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            color: white;
+            font-weight: bold;
+            height: 1.2em;
+            text-align: center;
+            padding: 10px;
+            background: #000000;
+            z-index: 10;
+        }
+
+        #status.empty {
+            opacity: 0;
+        }
+
+        iframe {
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0;
+            transition: opacity 0;
+            width: 100%;
+            height: 100%;
+            border: 0 transparent;
+        }
+
+        iframe.show {
+            transition: opacity 1s;
+            opacity: 1;
+        }
+
+    </style>
+</head>
+<body id="dcast">
+
+<div id="main" class="fade">
+    <iframe id="iframe"></iframe>
+</div>
+<div id="status" class="empty">
+</div>
+
+<script type="text/javascript" src="//www.gstatic.com/cast/sdk/libs/receiver/2.0.0/cast_receiver.js"></script>
+<script type="text/javascript">
+    const main = document.getElementById('main');
+    const status = document.getElementById('status');
+    const iframe = document.getElementById('iframe');
+
+    let castReceiverManager;
+    const credentials = {};
+
+    function setStatus(message) {
+        if (message) {
+            status.classList.remove('empty');
+        } else {
+            status.classList.add('empty');
+        }
+        status.textContent = message;
+    }
+
+    function loadFrame(url) {
+        setStatus('Loading: ' + url);
+        iframe.classList.remove('show');
+        iframe.src = url;
+    }
+
+    iframe.onload = (e) => {
+        iframe.classList.add('show');
+        setStatus('');
+    };
+
+    window.onload = () => {
+        main.classList.add('show');
+
+        cast.receiver.logger.setLevelValue(0);
+
+        castReceiverManager = cast.receiver.CastReceiverManager.getInstance();
+
+        if (castReceiverManager.getDeviceCapabilities() == null) {
+            console.warn('Not a Cast receiver (use function "loadFrame(url)" for local debugging)');
+        } else {
+            castReceiverManager.onReady = (event) => {
+                castReceiverManager.setApplicationState('Autocast');
+                setStatus('Waiting for address...');
+            };
+
+            // create a CastMessageBus to handle messages for a custom namespace
+            const messageBus = castReceiverManager.getCastMessageBus('urn:x-cast:at.netunix.autocast');
+
+            // handler for the CastMessageBus message event
+            messageBus.onMessage = (event) => {
+                const msg = JSON.parse(event.data);
+
+                loadFrame(msg.url);
+
+                if (msg.credentials) {
+                    if (msg.credentials.oauth) {
+                        const oAuthCredentials = msg.credentials.oauth.split('|');
+
+                        credentials.oauth = {
+                            client_id: oAuthCredentials[0],
+                            client_secret: oAuthCredentials[1],
+                            refresh_token: oAuthCredentials[2],
+                            grant_type: 'refresh_token',
+                        }
+                    }
+
+                    credentials.basic = msg.credentials.basic;
+                }
+
+                // inform all senders on the CastMessageBus of the incoming message event
+                // sender message listener will be invoked
+                messageBus.send(event.senderId, event.data);
+            };
+
+            // initialize the CastReceiverManager with an application status message
+            castReceiverManager.start({ statusText: 'Autocast is starting...' });
+        }
+    };
+
+    // Use window.postMessage for IFrame parent/child communication because it works cross origins
+    // https://stackoverflow.com/a/41566923/370252
+    window.addEventListener('message', (event) => {
+        const message = event.data;
+
+        if (event.source === window) {
+            console.log('Suppress message loop', event);
+            return;
+        }
+
+        if (!message || !message.type || typeof message.type !== 'string') {
+            console.warn('Invalid message received', event);
+            return;
+        }
+
+        console.warn('Message received', event);
+
+        switch (message.type) {
+            case 'getAvailableAuth':
+                const availableAuthMechanisms = [];
+
+                if (credentials.oauth != null) {
+                    availableAuthMechanisms.push('OAuth');
+                }
+
+                if (credentials.basic != null) {
+                    availableAuthMechanisms.push('Basic');
+                }
+
+                event.source.postMessage({
+                    type: message.type,
+                    response: availableAuthMechanisms,
+                }, '*');
+                break;
+            case 'getAuthToken':
+                const mechanism = message.request;
+
+                if (mechanism === 'OAuth') {
+                    const data = new FormData();
+                    Object.keys(credentials.oauth).forEach((key) => {
+                        data.append(key, credentials.oauth[key]);
+                    });
+
+                    fetch('https://www.googleapis.com/oauth2/v4/token', {
+                        method: 'POST',
+                        body: data,
+                    })
+                        .then((response) => response.json())
+                        .then((oauthData) => {
+                            event.source.postMessage({
+                                type: message.type,
+                                response: oauthData.access_token, // OR id_token?
+                            }, '*');
+                        });
+                } else if (mechanism === 'Basic') {
+                    event.source.postMessage({
+                        type: message.type,
+                        response: btoa(credentials.basic),
+                    }, '*');
+                } else {
+                    console.error(`Invalid auth token request: ${mechanism}`);
+                }
+                break;
+        }
+    }, false);
+</script>
+</body>
+</html>

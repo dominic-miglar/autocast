@@ -1,0 +1,19 @@
+{
+  "name": "autocast",
+  "version": "0.0.1",
+  "description": "Automatically cast websites to Chromecast receivers",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node --files autocast.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "nodecastor": "^0.1.9"
+  },
+  "devDependencies": {
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.5"
+  }
+}
