@@ -38,6 +38,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Build image
         run: docker build . --file Dockerfile --tag $IMAGE_NAME
