@@ -110,8 +110,3 @@ interface CastInitData {
     basic?: string;
   };
 }
-
-interface CastTarget {
-  name: string;
-  channel?: string;
-}

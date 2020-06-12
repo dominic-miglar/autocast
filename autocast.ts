@@ -1,17 +1,12 @@
 const nodecastor: Nodecastor = require('nodecastor');
 
-const castAppId = 'B3F86161';
-const castMessageNamespace = 'urn:x-cast:at.netunix.autocast';
 const log = console.log
 
-log('Starting Autocast...', new Date().toLocaleString());
+const castAppId = process.env.AUTOCAST_CAST_APP_ID || 'B3F86161'
+const castMessageNamespace = process.env.AUTOCAST_MESSAGE_NAMESPACE || 'urn:x-cast:at.netunix.autocast'
+const url = process.env.AUTOCAST_URL || 'https://github.com/dominic-miglar/autocast/blob/master/README.md'
 
-/**
- * A whitelist of Cast receivers onto which Autocast will be casted.
- */
-const targets: CastTarget[] = [
-  { name: 'Hittn TV', channel: 'perchau-b01-00' },
-];
+log('Starting Autocast...', new Date().toLocaleString());
 
 function isRunningAutocast(status: CastStatus): boolean {
   return !isIdle(status) && status.applications.find(app => app.appId === castAppId) != null;
@@ -49,15 +44,6 @@ function tryToCast(
   data: CastInitData,
   force: boolean = false,
 ): void {
-  const target = targets.find(target => target.name === device.friendlyName);
-
-  if (target) {
-    log('Attempting to cast to device', device.friendlyName);
-  } else {
-    log('Ignoring device', device.friendlyName);
-    return;
-  }
-
   log(`(${device.friendlyName}) URL: ` + data.url)
 
   if (isIdle(status)) {clearTimeout(timeoutIds[device.id]);
@@ -81,11 +67,7 @@ function tryToCast(
   }
 }
 
-function getUrl(): Promise<string> {
-  return Promise.resolve('https://grafana.logreposit.com/playlists/play/1?kiosk&autofitpanels')
-}
-
-getUrl().then(url => {
+Promise.resolve(url).then(url => {
   log('Using URL:', url);
 
   const castInitData: CastInitData = {
