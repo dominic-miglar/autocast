@@ -18,20 +18,20 @@ env:
   IMAGE_NAME: autocast
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Build
-        run: docker build . --file Dockerfile
+      - name: Test
+        run: echo "No tests yet."
 
   # Push image to GitHub Packages.
   # See also https://docs.docker.com/docker-hub/builds/
   push:
     # Ensure test job passes before pushing image.
-    needs: build
+    needs: test
 
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
