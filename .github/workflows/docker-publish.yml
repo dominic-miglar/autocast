@@ -65,4 +65,5 @@ jobs:
           echo VERSION=$VERSION
 
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker tag $IMAGE_NAME $IMAGE_ID:$(git describe)
           docker push $IMAGE_ID:$VERSION
