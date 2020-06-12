@@ -4,7 +4,7 @@ const log = console.log
 
 const castAppId = process.env.AUTOCAST_CAST_APP_ID || 'B3F86161'
 const castMessageNamespace = process.env.AUTOCAST_MESSAGE_NAMESPACE || 'urn:x-cast:at.netunix.autocast'
-const url = process.env.AUTOCAST_URL || 'https://github.com/dominic-miglar/autocast/blob/master/README.md'
+const url = process.env.AUTOCAST_URL || 'https://raw.githubusercontent.com/dominic-miglar/autocast/master/README.md'
 
 log('Starting Autocast...', new Date().toLocaleString());
 
